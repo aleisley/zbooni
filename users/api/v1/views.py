@@ -10,6 +10,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ViewSet
 
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
@@ -92,25 +93,21 @@ class UserViewSet(ModelViewSet):
         return Response(user_serializer.data)
 
 
-class UserAuthTokenViewSet(ModelViewSet):
+class UserAuthTokenViewSet(ViewSet):
     """ ViewSet for fetch the oauth2 access token. """
     serializer_class = UserAuthTokenSerializer
-    queryset = get_user_model().objects.none()
     http_method_names = ['post']
 
     def create(self, request, *args, **kwargs):
         """ Override the create method to fetch token for the response. """
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         # Generate token
         access_token = self._generate_access_token(serializer)
-
-        headers = self.get_success_headers(serializer.data)
         return Response(
             {'token': access_token.token},
             status=status.HTTP_201_CREATED,
-            headers=headers
         )
 
     def _generate_access_token(self, serializer):
