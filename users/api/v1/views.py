@@ -69,7 +69,6 @@ class UserViewSet(ModelViewSet):
         token, created = Token.objects.get_or_create(user=user)
         mail_subject = 'Activate your user account.'
         message = render_to_string('users/activate_email.html', {
-            'user': user,
             'token': token
         })
         email = EmailMessage(mail_subject, message, to=[user_email])
@@ -86,7 +85,6 @@ class UserViewSet(ModelViewSet):
             {'token': 'This field is required.'},
             status=status.HTTP_400_BAD_REQUEST
         )
-
         if 'token' not in request.data:
             return error_response
 
