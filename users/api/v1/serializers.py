@@ -52,9 +52,10 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         Returns:
             attrs: Cleaned data values.
         """
+        User = self.Meta.model
         confirm_password = attrs.pop('confirm_password', '')
         password = attrs.get('password')
-        user = get_user_model()(**attrs)
+        user = User(**attrs)
 
         if password != confirm_password:
             raise serializers.ValidationError(
@@ -66,5 +67,47 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'password': list(e.messages)})
         else:
             attrs['password'] = make_password(password)
+
+        return attrs
+
+
+class UserAuthTokenSerializer(serializers.Serializer):
+    """ Serializer for `User` access token generation. """
+
+    email = serializers.EmailField()
+    password = serializers.CharField(
+        style={'input_type': 'password'}, write_only=True)
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            'email',
+            'password',
+        )
+
+    def validate(self, attrs):
+        """
+        Overrides the serializer validate method to check if user with
+        given credentials are found.
+
+        Raises:
+            serializers.ValidationError: Will raise a non field error
+                if either the email or password is wrong.
+
+        Returns:
+            attrs: Cleaned data values.
+        """
+        User = get_user_model()
+        email = attrs.get('email')
+        password = attrs.get('password')
+        error_msg = {'detail': 'User with given credentials not found.'}
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(error_msg)
+
+        if not user.check_password(password):
+            raise serializers.ValidationError(error_msg)
 
         return attrs

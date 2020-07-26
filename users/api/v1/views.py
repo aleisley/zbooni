@@ -1,5 +1,10 @@
+import datetime
 import logging
 
+from oauth2_provider.models import AccessToken
+from oauth2_provider.settings import oauth2_settings
+from oauthlib import common
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -10,8 +15,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
-from .serializers import UserSerializer
 from .serializers import RegisterUserSerializer
+from .serializers import UserAuthTokenSerializer
+from .serializers import UserSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +28,7 @@ class UserViewSet(ModelViewSet):
 
     serializer_class = UserSerializer
     queryset = get_user_model().objects.all()
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         """
@@ -83,3 +90,49 @@ class UserViewSet(ModelViewSet):
         user.save(update_fields=['is_active'])
         user_serializer = UserSerializer(user, context={'request': request})
         return Response(user_serializer.data)
+
+
+class UserAuthTokenViewSet(ModelViewSet):
+    """ ViewSet for fetch the oauth2 access token. """
+    serializer_class = UserAuthTokenSerializer
+    queryset = get_user_model().objects.none()
+    http_method_names = ['post']
+
+    def create(self, request, *args, **kwargs):
+        """ Override the create method to fetch token for the response. """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Generate token
+        access_token = self._generate_access_token(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {'token': access_token.token},
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
+
+    def _generate_access_token(self, serializer):
+        """
+        Generates the access token for the given user.
+
+        Returns:
+            AccessToken: OAuth Toolkit's AccessToken instance.
+        """
+        User = get_user_model()
+        user = User.objects.get(email=serializer.data['email'])
+
+        expiration_dt = (
+            datetime.datetime.now() +
+            datetime.timedelta(
+                seconds=oauth2_settings.ACCESS_TOKEN_EXPIRE_SECONDS)
+        )
+        access_token = AccessToken(
+            user=user,
+            expires=expiration_dt,
+            token=common.generate_token()
+        )
+        access_token.save()
+
+        return access_token

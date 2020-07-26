@@ -42,6 +42,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'cuser',
     'django_extensions',
+    'oauth2_provider',
     'rest_framework',
     'rest_framework.authtoken',
 ]
