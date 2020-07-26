@@ -2,6 +2,7 @@ import logging
 
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
@@ -54,3 +55,31 @@ class UserViewSet(ModelViewSet):
         email = EmailMessage(mail_subject, message, to=[user_email])
         email.send()
         logger.info(f'Successfully sent email to {user_email}')
+
+    @action(detail=True, methods=['put'])
+    def status(self, request, pk=None):
+        """
+        Endpoint for setting the `is_active` field of the users to True
+        if the correct token is given.
+        """
+        if 'token' not in request.data:
+            return Response(
+                {'token': 'This field is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = self.get_object()
+        token_key = request.data.pop('token', '')
+        try:
+            Token.objects.get(user=user, key=token_key)
+        except Token.DoesNotExist:
+            return Response(
+                {'token': 'Token not found for user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set the user as active.
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        user_serializer = UserSerializer(user, context={'request': request})
+        return Response(user_serializer.data)

@@ -25,7 +25,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(view_name='user-detail')
 
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('url',)
+        fields = ('url',) + BaseUserSerializer.Meta.fields
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
