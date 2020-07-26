@@ -83,6 +83,63 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ChangePasswordSerializer(serializers.HyperlinkedModelSerializer):
+    """ Serializer for changing password. """
+
+    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
+    password = serializers.CharField(
+        style={'input_type': 'password'}, write_only=True)
+    new_password = serializers.CharField(
+        style={'input_type': 'password'}, write_only=True)
+
+    class Meta(BaseUserSerializer.Meta):
+        fields = ('url', 'password', 'new_password')
+
+    def validate(self, attrs):
+        """
+        Override the validate method to check if the passwords are
+        all without errors.
+
+        Raises:
+            serializers.ValidationError 1: Raised if the password
+                entered is not the same as the one currently saved.
+            serializers.ValidationError 2: Raised if the password
+                and new_password fields are the same.
+            serializers.ValidationError 3: Raised if the new_password
+                didn't pass the validate_password method.
+
+        Returns:
+            attrs: Cleaned data values.
+        """
+        password = attrs.get('password')
+        new_password = attrs.get('new_password')
+
+        user = self.context['request'].user
+        if not user.check_password(password):
+            raise serializers.ValidationError(
+                {'password': 'The password entered is incorrect.'}
+            )
+
+        if password == new_password:
+            raise serializers.ValidationError(
+                {'password': 'New password should be different.'}
+            )
+
+        try:
+            validators.validate_password(password=new_password, user=user)
+        except exceptions.ValidationError as e:
+            raise serializers.ValidationError(
+                {'new_password': list(e.messages)}
+            )
+
+        return attrs
+
+    def save(self, **kwargs):
+        user = kwargs.get('user')
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])
+
+
 class UserAuthTokenSerializer(serializers.Serializer):
     """ Serializer for `User` access token generation. """
 

@@ -5,6 +5,7 @@ from oauth2_provider.models import AccessToken
 from oauth2_provider.settings import oauth2_settings
 from oauthlib import common
 from rest_framework import exceptions
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -16,6 +17,8 @@ from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
+from .permissions import IsOwnUserOrRaiseError
+from .serializers import ChangePasswordSerializer
 from .serializers import RegisterUserSerializer
 from .serializers import UnauthorizedUserSerializer
 from .serializers import UserAuthTokenSerializer
@@ -36,7 +39,12 @@ class UserViewSet(ModelViewSet):
         the different viewset actions.
         """
         if self.request.user and self.request.user.is_authenticated:
-            return UserSerializer
+            if self.action in ('create',):
+                return RegisterUserSerializer
+            if self.action in ('password',):
+                return ChangePasswordSerializer
+            else:
+                return UserSerializer
         else:
             if self.action in ('list', 'retrieve'):
                 return UnauthorizedUserSerializer
@@ -68,11 +76,11 @@ class UserViewSet(ModelViewSet):
         email.send()
         logger.info(f'Successfully sent email to {user_email}')
 
-    @action(detail=True, methods=['put'])
+    @action(detail=True, methods=['post'])
     def status(self, request, pk=None):
         """
         Endpoint for setting the `is_active` field of the users to True
-        if the correct token is given.
+        if the correct token is given. Non-idempotent.
         """
         error_response = Response(
             {'token': 'This field is required.'},
@@ -96,6 +104,19 @@ class UserViewSet(ModelViewSet):
         user_serializer = self.get_serializer(
             user, context={'request': request})
         return Response(user_serializer.data)
+
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=[permissions.IsAuthenticated, IsOwnUserOrRaiseError]
+    )
+    def password(self, request, pk=None):
+        """ Endpoint for changing passwords. Non-idempotent. """
+        user = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserAuthTokenViewSet(ViewSet):
