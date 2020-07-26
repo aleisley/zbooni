@@ -103,7 +103,7 @@ class UserAuthTokenSerializer(serializers.Serializer):
         error_msg = {'detail': 'User with given credentials not found.'}
 
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email=email, is_active=True)
         except User.DoesNotExist:
             raise serializers.ValidationError(error_msg)
 
