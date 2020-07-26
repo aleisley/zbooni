@@ -4,7 +4,7 @@ import logging
 from oauth2_provider.models import AccessToken
 from oauth2_provider.settings import oauth2_settings
 from oauthlib import common
-from rest_framework import permissions
+from rest_framework import exceptions
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -17,6 +17,7 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 from .serializers import RegisterUserSerializer
+from .serializers import UnauthorizedUserSerializer
 from .serializers import UserAuthTokenSerializer
 from .serializers import UserSerializer
 
@@ -27,21 +28,24 @@ logger = logging.getLogger(__name__)
 class UserViewSet(ModelViewSet):
     """ ViewSet for `User` objects. """
 
-    serializer_class = UserSerializer
     queryset = get_user_model().objects.all()
-    permission_classes = [permissions.IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
+    def get_serializer_class(self):
         """
-        Overrides the create method to use the RegisterUserSerializer
-        for `User` creation.
+        Override the get_serializer_class to change the serializer of
+        the different viewset actions.
         """
-        serializer = RegisterUserSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        if self.request.user and self.request.user.is_authenticated:
+            return UserSerializer
+        else:
+            if self.action in ('list', 'retrieve'):
+                return UnauthorizedUserSerializer
+            elif self.action in ('status',):
+                return UserSerializer
+            elif self.action in ('create',):
+                return RegisterUserSerializer
+            else:
+                raise exceptions.PermissionDenied()
 
     def perform_create(self, serializer):
         """
@@ -70,26 +74,27 @@ class UserViewSet(ModelViewSet):
         Endpoint for setting the `is_active` field of the users to True
         if the correct token is given.
         """
+        error_response = Response(
+            {'token': 'This field is required.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
         if 'token' not in request.data:
-            return Response(
-                {'token': 'This field is required.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response
 
         user = self.get_object()
         token_key = request.data.pop('token', '')
+
         try:
             Token.objects.get(user=user, key=token_key)
         except Token.DoesNotExist:
-            return Response(
-                {'token': 'Token not found for user.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return error_response
 
         # Set the user as active.
         user.is_active = True
         user.save(update_fields=['is_active'])
-        user_serializer = UserSerializer(user, context={'request': request})
+        user_serializer = self.get_serializer(
+            user, context={'request': request})
         return Response(user_serializer.data)
 
 
