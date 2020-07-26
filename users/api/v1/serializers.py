@@ -6,12 +6,16 @@ from django.contrib.auth.hashers import make_password
 from django.core import exceptions
 
 
-class BaseUserSerializer(serializers.BaseSerializer):
+class BaseUserSerializer(serializers.HyperlinkedModelSerializer):
     """ Base Serializer for `User` objects. """
+
+    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
+    is_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = get_user_model()
         fields = (
+            'url',
             'email',
             'first_name',
             'last_name',
@@ -19,7 +23,7 @@ class BaseUserSerializer(serializers.BaseSerializer):
         )
 
 
-class UnauthorizedUserSerializer(serializers.HyperlinkedModelSerializer):
+class UnauthorizedUserSerializer(BaseUserSerializer):
     """
     HyperlinkedModelSerializer for `User` objects.
     This is used by users who aren't authenticated
@@ -27,29 +31,25 @@ class UnauthorizedUserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = get_user_model()
-        fields = ('first_name', 'is_active')
+        fields = ('url', 'first_name', 'is_active')
 
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(BaseUserSerializer):
     """ HyperlinkedModelSerializer for `User` objects. """
 
-    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = ('url',) + BaseUserSerializer.Meta.fields
+    pass
 
 
-class RegisterUserSerializer(serializers.ModelSerializer):
+class RegisterUserSerializer(BaseUserSerializer):
     """ ModelSerializer for registering new `Users` """
 
-    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
     password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
     confirm_password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
 
     class Meta(BaseUserSerializer.Meta):
-        fields = ('url',) + BaseUserSerializer.Meta.fields + (
+        fields = BaseUserSerializer.Meta.fields + (
             'password', 'confirm_password')
 
     def validate(self, attrs):
@@ -83,10 +83,9 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class ChangePasswordSerializer(serializers.HyperlinkedModelSerializer):
+class ChangePasswordSerializer(BaseUserSerializer):
     """ Serializer for changing password. """
 
-    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
     password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
     new_password = serializers.CharField(

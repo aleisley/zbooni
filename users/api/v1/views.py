@@ -41,7 +41,7 @@ class UserViewSet(ModelViewSet):
         if self.request.user and self.request.user.is_authenticated:
             if self.action in ('create',):
                 return RegisterUserSerializer
-            if self.action in ('password',):
+            elif self.action in ('password',):
                 return ChangePasswordSerializer
             else:
                 return UserSerializer
