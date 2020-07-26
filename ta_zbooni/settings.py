@@ -43,6 +43,7 @@ THIRD_PARTY_APPS = [
     'cuser',
     'django_extensions',
     'rest_framework',
+    'rest_framework.authtoken',
 ]
 
 LOCAL_APPS = ['users']
