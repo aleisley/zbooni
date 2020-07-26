@@ -17,7 +17,7 @@ class UserViewSet(ModelViewSet):
     """ ViewSet for `User` objects. """
 
     serializer_class = UserSerializer
-    queryset = get_user_model().objects.filter(is_active=True)
+    queryset = get_user_model().objects.all()
 
     def perform_create(self, serializer):
         """
