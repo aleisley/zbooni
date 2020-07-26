@@ -76,7 +76,7 @@ class UserViewSet(ModelViewSet):
         email.send()
         logger.info(f'Successfully sent email to {user_email}')
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['put'])
     def status(self, request, pk=None):
         """
         Endpoint for setting the `is_active` field of the users to True
