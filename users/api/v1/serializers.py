@@ -19,6 +19,17 @@ class BaseUserSerializer(serializers.BaseSerializer):
         )
 
 
+class UnauthorizedUserSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    HyperlinkedModelSerializer for `User` objects.
+    This is used by users who aren't authenticated
+    """
+
+    class Meta:
+        model = get_user_model()
+        fields = ('first_name', 'is_active')
+
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     """ HyperlinkedModelSerializer for `User` objects. """
 
@@ -31,13 +42,14 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class RegisterUserSerializer(serializers.ModelSerializer):
     """ ModelSerializer for registering new `Users` """
 
+    url = serializers.HyperlinkedIdentityField(view_name='user-detail')
     password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
     confirm_password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
 
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + (
+        fields = ('url',) + BaseUserSerializer.Meta.fields + (
             'password', 'confirm_password')
 
     def validate(self, attrs):
