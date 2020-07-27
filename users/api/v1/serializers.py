@@ -153,13 +153,6 @@ class UserAuthTokenSerializer(serializers.Serializer):
     password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
 
-    # class Meta:
-    #     model = get_user_model()
-    #     fields = (
-    #         'email',
-    #         'password',
-    #     )
-
     def validate(self, attrs):
         """
         Overrides the serializer validate method to check if user with
