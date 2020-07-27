@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework.authtoken.models import Token
 
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import get_user_model
