@@ -143,6 +143,7 @@ class UserAuthTokenViewSet(ViewSet):
             datetime.timedelta(
                 seconds=oauth2_settings.ACCESS_TOKEN_EXPIRE_SECONDS)
         )
+        # No need to create an Application.
         access_token = AccessToken(
             user=user,
             expires=expiration_dt,

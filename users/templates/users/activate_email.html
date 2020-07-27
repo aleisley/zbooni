@@ -1,6 +1,6 @@
 {% autoescape off %}
 Hi,
-Please click on the link to confirm your registration,
+Please do a put request with this token on the /api/v1/users/:id/status/ endpoint to activate the account.
 
 Token: {{ token }}
 {% endautoescape %}
