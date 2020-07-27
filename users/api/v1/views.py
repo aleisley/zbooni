@@ -20,6 +20,7 @@ from django.template.loader import render_to_string
 from .permissions import IsOwnUserOrRaiseError
 from .serializers import ChangePasswordSerializer
 from .serializers import RegisterUserSerializer
+from .serializers import TokenSerializer
 from .serializers import UnauthorizedUserSerializer
 from .serializers import UserAuthTokenSerializer
 from .serializers import UserSerializer
@@ -43,13 +44,15 @@ class UserViewSet(ModelViewSet):
                 return RegisterUserSerializer
             elif self.action in ('password',):
                 return ChangePasswordSerializer
+            elif self.action in ('status',):
+                return TokenSerializer
             else:
                 return UserSerializer
         else:
             if self.action in ('list', 'retrieve'):
                 return UnauthorizedUserSerializer
             elif self.action in ('status',):
-                return UserSerializer
+                return TokenSerializer
             elif self.action in ('create',):
                 return RegisterUserSerializer
             else:
@@ -81,25 +84,23 @@ class UserViewSet(ModelViewSet):
         Endpoint for setting the `is_active` field of the users to True
         if the correct token is given. Non-idempotent.
         """
-        error_response = Response(
-            {'token': 'This field is required.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-        if 'token' not in request.data:
-            return error_response
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         user = self.get_object()
-        token_key = request.data.pop('token', '')
 
         try:
-            Token.objects.get(user=user, key=token_key)
+            Token.objects.get(user=user, key=serializer.data['token'])
         except Token.DoesNotExist:
-            return error_response
+            return Response(
+                {'token': 'Wrong token for user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Set the user as active.
         user.is_active = True
         user.save(update_fields=['is_active'])
-        user_serializer = self.get_serializer(
+        user_serializer = UserSerializer(
             user, context={'request': request})
         return Response(user_serializer.data)
 

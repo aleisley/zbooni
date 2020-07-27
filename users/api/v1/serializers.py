@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.authtoken.models import Token
 
 import django.contrib.auth.password_validation as validators
 from django.contrib.auth import get_user_model
@@ -139,6 +140,12 @@ class ChangePasswordSerializer(BaseUserSerializer):
         user.save(update_fields=['password'])
 
 
+class TokenSerializer(serializers.Serializer):
+    """ Serializer for tokens. """
+
+    token = serializers.CharField()
+
+
 class UserAuthTokenSerializer(serializers.Serializer):
     """ Serializer for `User` access token generation. """
 
@@ -146,12 +153,12 @@ class UserAuthTokenSerializer(serializers.Serializer):
     password = serializers.CharField(
         style={'input_type': 'password'}, write_only=True)
 
-    class Meta:
-        model = get_user_model()
-        fields = (
-            'email',
-            'password',
-        )
+    # class Meta:
+    #     model = get_user_model()
+    #     fields = (
+    #         'email',
+    #         'password',
+    #     )
 
     def validate(self, attrs):
         """
