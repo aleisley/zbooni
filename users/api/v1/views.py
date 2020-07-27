@@ -4,7 +4,6 @@ import logging
 from oauth2_provider.models import AccessToken
 from oauth2_provider.settings import oauth2_settings
 from oauthlib import common
-from rest_framework import exceptions
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -15,6 +14,7 @@ from rest_framework.viewsets import ViewSet
 
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
+from django.utils import timezone
 from django.template.loader import render_to_string
 
 from .permissions import IsOwnUserOrRaiseError
@@ -124,7 +124,7 @@ class UserAuthTokenViewSet(ViewSet):
         # Generate token
         access_token = self._generate_access_token(serializer)
         return Response(
-            {'token': access_token.token},
+            TokenSerializer(access_token).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -139,7 +139,7 @@ class UserAuthTokenViewSet(ViewSet):
         user = User.objects.get(email=serializer.data['email'])
 
         expiration_dt = (
-            datetime.datetime.now() +
+            timezone.now() +
             datetime.timedelta(
                 seconds=oauth2_settings.ACCESS_TOKEN_EXPIRE_SECONDS)
         )
