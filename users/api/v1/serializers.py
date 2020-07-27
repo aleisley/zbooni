@@ -29,6 +29,8 @@ class UnauthorizedUserSerializer(BaseUserSerializer):
     This is used by users who aren't authenticated
     """
 
+    first_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = get_user_model()
         fields = ('url', 'first_name', 'is_active')

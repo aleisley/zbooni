@@ -39,24 +39,17 @@ class UserViewSet(ModelViewSet):
         Override the get_serializer_class to change the serializer of
         the different viewset actions.
         """
-        if self.request.user and self.request.user.is_authenticated:
-            if self.action in ('create',):
-                return RegisterUserSerializer
-            elif self.action in ('password',):
-                return ChangePasswordSerializer
-            elif self.action in ('status',):
-                return TokenSerializer
-            else:
-                return UserSerializer
+        if self.action in ('status',):
+            return TokenSerializer
+        elif self.action in ('password'):
+            return ChangePasswordSerializer
+        elif self.action in ('create'):
+            return RegisterUserSerializer
         else:
-            if self.action in ('list', 'retrieve'):
-                return UnauthorizedUserSerializer
-            elif self.action in ('status',):
-                return TokenSerializer
-            elif self.action in ('create',):
-                return RegisterUserSerializer
+            if self.request.user and self.request.user.is_authenticated:
+                return UserSerializer
             else:
-                raise exceptions.PermissionDenied()
+                return UnauthorizedUserSerializer
 
     def perform_create(self, serializer):
         """
