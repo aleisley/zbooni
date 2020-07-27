@@ -20,6 +20,7 @@ from django.template.loader import render_to_string
 from .permissions import IsOwnUserOrRaiseError
 from .serializers import ChangePasswordSerializer
 from .serializers import RegisterUserSerializer
+from .serializers import TokenSerializer
 from .serializers import UnauthorizedUserSerializer
 from .serializers import UserAuthTokenSerializer
 from .serializers import UserSerializer
@@ -38,22 +39,17 @@ class UserViewSet(ModelViewSet):
         Override the get_serializer_class to change the serializer of
         the different viewset actions.
         """
-        if self.request.user and self.request.user.is_authenticated:
-            if self.action in ('create',):
-                return RegisterUserSerializer
-            if self.action in ('password',):
-                return ChangePasswordSerializer
-            else:
-                return UserSerializer
+        if self.action in ('status',):
+            return TokenSerializer
+        elif self.action in ('password'):
+            return ChangePasswordSerializer
+        elif self.action in ('create'):
+            return RegisterUserSerializer
         else:
-            if self.action in ('list', 'retrieve'):
-                return UnauthorizedUserSerializer
-            elif self.action in ('status',):
+            if self.request.user and self.request.user.is_authenticated:
                 return UserSerializer
-            elif self.action in ('create',):
-                return RegisterUserSerializer
             else:
-                raise exceptions.PermissionDenied()
+                return UnauthorizedUserSerializer
 
     def perform_create(self, serializer):
         """
@@ -69,7 +65,6 @@ class UserViewSet(ModelViewSet):
         token, created = Token.objects.get_or_create(user=user)
         mail_subject = 'Activate your user account.'
         message = render_to_string('users/activate_email.html', {
-            'user': user,
             'token': token
         })
         email = EmailMessage(mail_subject, message, to=[user_email])
@@ -80,28 +75,25 @@ class UserViewSet(ModelViewSet):
     def status(self, request, pk=None):
         """
         Endpoint for setting the `is_active` field of the users to True
-        if the correct token is given. Non-idempotent.
+        if the correct token is given.
         """
-        error_response = Response(
-            {'token': 'This field is required.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-        if 'token' not in request.data:
-            return error_response
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         user = self.get_object()
-        token_key = request.data.pop('token', '')
 
         try:
-            Token.objects.get(user=user, key=token_key)
+            Token.objects.get(user=user, key=serializer.data['token'])
         except Token.DoesNotExist:
-            return error_response
+            return Response(
+                {'token': 'Wrong token for user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Set the user as active.
         user.is_active = True
         user.save(update_fields=['is_active'])
-        user_serializer = self.get_serializer(
+        user_serializer = UserSerializer(
             user, context={'request': request})
         return Response(user_serializer.data)
 
@@ -151,6 +143,7 @@ class UserAuthTokenViewSet(ViewSet):
             datetime.timedelta(
                 seconds=oauth2_settings.ACCESS_TOKEN_EXPIRE_SECONDS)
         )
+        # No need to create an Application.
         access_token = AccessToken(
             user=user,
             expires=expiration_dt,
