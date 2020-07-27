@@ -75,7 +75,7 @@ class UserViewSet(ModelViewSet):
     def status(self, request, pk=None):
         """
         Endpoint for setting the `is_active` field of the users to True
-        if the correct token is given. Non-idempotent.
+        if the correct token is given.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
