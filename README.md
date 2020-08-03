@@ -94,3 +94,107 @@ Run the project
 ```
 $ python manage.py runserver
 ```
+
+### Endpoints
+Registration
+```
+Request:
+POST /api/v1/users/
+{
+  "email": "john.smith@example.com",
+  "first_name": "John",
+  "last_name": "Smith",
+  "password": "Test12345",
+  "confirm_password": "Test12345"
+}
+
+Response:
+{
+  "url": "http://localhost:8000/api/v1/users/1/",
+  "email": "john.smith@example.com",
+  "first_name": "John",
+  "last_name": "Smith",
+  "is_active": false
+}
+```
+
+User Activation
+```
+Request:
+PUT /api/v1/users/1/status/
+{
+  "token": "<token sent through your email>"
+}
+
+Response:
+{
+  "url": "http://localhost:8000/api/v1/users/1/",
+  "email": "john.smith@example.com",
+  "first_name": "John",
+  "last_name": "Smith",
+  "is_active": true
+}
+```
+
+Login
+```
+Request:
+POST /api/v1/user-oauth-token/
+{
+  "email": "john.smith@example.com",
+  "password": "Test12345"
+}
+
+Response:
+{
+  "token": "<Oauth bearer token>"
+}
+```
+
+Users List
+```
+Headers:
+Authorization: Bearer <Oauth token from login endpoint>
+
+Request:
+GET /api/v1/users/
+
+Response with token:
+[
+  {
+    "url": "http://localhost:8000/api/v1/users/1/",
+    "email": "john.smith@example.com",
+    "first_name": "John",
+    "last_name": "Smith",
+    "is_active": true
+  },
+  ...
+]
+
+Response without token:
+[
+  {
+    "url": "http://localhost:8000/api/v1/users/1/",
+    "first_name": "John",
+    "is_active": true
+  },
+  ...
+]
+```
+
+Change Password
+```
+Headers:
+Authorization: Bearer <Oauth token from login endpoint>
+
+Request:
+POST http://localhost:8000/api/v1/users/1/password/
+{
+  "password": "Test12345",
+  "new_password": "Test123456789"
+}
+
+Response:
+No body returned
+```
+
